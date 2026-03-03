@@ -12,6 +12,7 @@ dependencies = [
     "asyncio",
     "tenacity>=8.2",
     "structlog>=23.0",
+    "asyncpraw>=7.7",
 ]
 
 [project.optional-dependencies]

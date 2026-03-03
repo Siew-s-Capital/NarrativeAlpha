@@ -25,7 +25,8 @@ Current tools track price/volume. Nobody tracks narrative formation in real-time
 | Date | Feature | Status |
 |------|---------|--------|
 | 2026-03-02 | Project structure, config system, Twitter ingestion | ✅ Complete |
-| 2026-03-03 | Reddit ingestion, data pipeline | 🔄 Next |
+| 2026-03-03 | Reddit ingestion, data pipeline | ✅ Complete |
+| 2026-03-04 | News API ingestion, unified data models | 🔄 Next |
 
 ## Quick Start
 
@@ -41,6 +42,9 @@ cp .env.example .env
 
 # Run Twitter ingestion
 python scripts/ingest_twitter.py "$BTC" "$ETH" --max-results 100 --min-likes 10
+
+# Run Reddit ingestion
+python scripts/ingest_reddit.py --subreddits Cryptocurrency Bitcoin --keywords $BTC $ETH --max-results 50
 ```
 
 ## Architecture
@@ -52,6 +56,7 @@ NarrativeAlpha/
 │   ├── ingestion/      # Data ingestion (Twitter, Reddit, etc.)
 │   ├── analysis/       # LLM narrative detection
 │   ├── models/         # Data models (Pydantic)
+│   ├── pipeline/       # Unified ingestion pipelines
 │   └── reports/        # Report generation
 ├── tests/              # Test suite (pytest)
 └── scripts/            # CLI utilities
@@ -65,13 +70,14 @@ NarrativeAlpha/
 - [x] **Configuration** — Pydantic settings with .env support
 - [x] **Data Models** — SocialPost, Tweet, RedditPost, Narrative
 - [x] **Twitter Ingestion** — Async API client with rate limiting
-- [x] **SQLite Storage** — Tweet storage with deduplication
-- [x] **CLI Tool** — `ingest_twitter.py` for data collection
+- [x] **Reddit Ingestion** — Async PRAW client with parallel searching
+- [x] **Unified Storage** — SQLite storage with deduplication across platforms
+- [x] **Ingestion Pipeline** — Orchestrator for multi-platform data collection
+- [x] **CLI Tools** — Scripts for Twitter and Reddit ingestion
 - [x] **Test Suite** — Unit tests for ingestion and models
 
 ### 🔄 Phase 1: Remaining
 
-- [ ] Reddit ingestion
 - [ ] News API ingestion
 - [ ] Podcast transcription
 - [ ] LLM narrative clustering
