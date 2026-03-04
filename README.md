@@ -26,7 +26,8 @@ Current tools track price/volume. Nobody tracks narrative formation in real-time
 |------|---------|--------|
 | 2026-03-02 | Project structure, config system, Twitter ingestion | ✅ Complete |
 | 2026-03-03 | Reddit ingestion, unified data pipeline | ✅ Complete |
-| 2026-03-04 | News API ingestion, unified data models | 🔄 Next |
+| 2026-03-04 | News API ingestion, unified data models | ✅ Complete |
+| 2026-03-05 | Podcast transcription ingestion | 🔄 Next |
 
 ## Quick Start
 
@@ -45,6 +46,9 @@ python scripts/ingest_twitter.py "$BTC" "$ETH" --max-results 100 --min-likes 10
 
 # Run Reddit ingestion
 python scripts/ingest_reddit.py --subreddits Cryptocurrency Bitcoin --keywords $BTC $ETH --max-results 50
+
+# Run News ingestion
+python scripts/ingest_news.py "$BTC" "crypto ETF" --max-results 50 --hours-back 24
 ```
 
 ## Architecture
@@ -71,6 +75,8 @@ NarrativeAlpha/
 - [x] **Data Models** — SocialPost, Tweet, RedditPost, Narrative
 - [x] **Twitter Ingestion** — Async API client with rate limiting
 - [x] **Reddit Ingestion** — Async PRAW client with parallel searching
+- [x] **News API Ingestion** — Async News API client with query/domain filtering
+- [x] **Unified Data Models** — Twitter, Reddit, and News all normalized to SocialPost
 - [x] **Unified Storage** — SQLite storage with deduplication across platforms
 - [x] **Ingestion Pipeline** — Orchestrator for multi-platform data collection
 - [x] **CLI Tools** — Scripts for Twitter and Reddit ingestion
@@ -78,7 +84,6 @@ NarrativeAlpha/
 
 ### 🔄 Phase 1: Remaining
 
-- [ ] News API ingestion
 - [ ] Podcast transcription
 - [ ] LLM narrative clustering
 - [ ] Sentiment analysis
@@ -119,6 +124,8 @@ ruff check src tests
 | `REDDIT_CLIENT_ID` | Reddit API client ID | Yes (for Reddit) |
 | `REDDIT_CLIENT_SECRET` | Reddit API secret | Yes (for Reddit) |
 | `OPENAI_API_KEY` | OpenAI API key | Yes (for analysis) |
+| `NEWS_API_KEY` | News API key from newsapi.org | Yes (for news ingestion) |
+| `NEWS_API_BASE_URL` | News API base URL | Optional |
 | `DATABASE_URL` | SQLite database path | Optional |
 | `LOG_LEVEL` | Logging level | Optional |
 

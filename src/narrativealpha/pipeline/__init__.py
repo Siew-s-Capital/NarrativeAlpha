@@ -1,4 +1,5 @@
 """Pipeline module exports."""
+
 from narrativealpha.pipeline.orchestrator import (
     IngestionConfig,
     IngestionResult,

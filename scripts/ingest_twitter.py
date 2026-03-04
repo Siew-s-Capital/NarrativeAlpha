@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """CLI for running Twitter ingestion."""
+
 import asyncio
 import argparse
 import sys
@@ -11,10 +12,7 @@ from narrativealpha.ingestion.twitter import TwitterClient
 from narrativealpha.ingestion.storage import TweetStore
 
 structlog.configure(
-    processors=[
-        structlog.processors.TimeStamper(fmt="iso"),
-        structlog.processors.JSONRenderer()
-    ]
+    processors=[structlog.processors.TimeStamper(fmt="iso"), structlog.processors.JSONRenderer()]
 )
 logger = structlog.get_logger()
 
@@ -27,7 +25,7 @@ async def ingest_tweets(
 ) -> None:
     """
     Ingest tweets for given queries.
-    
+
     Args:
         queries: List of search queries (supports cashtags like $BTC)
         max_results: Max tweets per query
@@ -35,22 +33,22 @@ async def ingest_tweets(
         hours_back: How many hours back to search
     """
     store = TweetStore()
-    
+
     # Show current stats
     stats = store.get_stats()
     logger.info("ingestion.starting", current_stats=stats, queries=queries)
-    
+
     async with TwitterClient() as client:
         for query in queries:
             logger.info("query.processing", query=query)
-            
+
             start_time = datetime.utcnow() - timedelta(hours=hours_back)
-            
+
             min_engagement = {"likes": min_likes} if min_likes > 0 else None
-            
+
             stored_count = 0
             duplicate_count = 0
-            
+
             async for tweet in client.search_recent_tweets(
                 query=query,
                 max_results=max_results,
@@ -62,14 +60,14 @@ async def ingest_tweets(
                     stored_count += 1
                 else:
                     duplicate_count += 1
-            
+
             logger.info(
                 "query.completed",
                 query=query,
                 stored=stored_count,
                 duplicates=duplicate_count,
             )
-    
+
     # Final stats
     final_stats = store.get_stats()
     logger.info("ingestion.completed", final_stats=final_stats)
@@ -82,39 +80,31 @@ def main():
     parser = argparse.ArgumentParser(
         description="Ingest tweets from Twitter/X API for narrative analysis"
     )
-    parser.add_argument(
-        "queries",
-        nargs="+",
-        help="Search queries (e.g., '$BTC' '$ETH crypto')"
-    )
+    parser.add_argument("queries", nargs="+", help="Search queries (e.g., '$BTC' '$ETH crypto')")
     parser.add_argument(
         "--max-results",
         type=int,
         default=100,
-        help="Maximum tweets to fetch per query (default: 100)"
+        help="Maximum tweets to fetch per query (default: 100)",
     )
     parser.add_argument(
-        "--min-likes",
-        type=int,
-        default=10,
-        help="Minimum likes threshold (default: 10)"
+        "--min-likes", type=int, default=10, help="Minimum likes threshold (default: 10)"
     )
     parser.add_argument(
-        "--hours-back",
-        type=int,
-        default=24,
-        help="Hours back to search (default: 24)"
+        "--hours-back", type=int, default=24, help="Hours back to search (default: 24)"
     )
-    
+
     args = parser.parse_args()
-    
+
     try:
-        asyncio.run(ingest_tweets(
-            queries=args.queries,
-            max_results=args.max_results,
-            min_likes=args.min_likes,
-            hours_back=args.hours_back,
-        ))
+        asyncio.run(
+            ingest_tweets(
+                queries=args.queries,
+                max_results=args.max_results,
+                min_likes=args.min_likes,
+                hours_back=args.hours_back,
+            )
+        )
     except KeyboardInterrupt:
         logger.info("ingestion.interrupted")
         sys.exit(1)

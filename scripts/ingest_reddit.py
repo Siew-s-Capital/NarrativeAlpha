@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """CLI for running Reddit ingestion."""
+
 import asyncio
 import argparse
 import sys
@@ -11,10 +12,7 @@ from narrativealpha.ingestion.reddit import RedditClient
 from narrativealpha.ingestion.storage import SocialPostStore
 
 structlog.configure(
-    processors=[
-        structlog.processors.TimeStamper(fmt="iso"),
-        structlog.processors.JSONRenderer()
-    ]
+    processors=[structlog.processors.TimeStamper(fmt="iso"), structlog.processors.JSONRenderer()]
 )
 logger = structlog.get_logger()
 
@@ -30,7 +28,7 @@ async def ingest_reddit(
 ) -> None:
     """
     Ingest Reddit posts from specified subreddits.
-    
+
     Args:
         subreddits: List of subreddit names (without r/)
         keywords: List of keywords to filter posts (OR logic)
@@ -41,7 +39,7 @@ async def ingest_reddit(
         sort: Sort method (hot/new/top/rising)
     """
     store = SocialPostStore()
-    
+
     # Show current stats
     stats = store.get_stats()
     logger.info(
@@ -50,10 +48,10 @@ async def ingest_reddit(
         subreddits=subreddits,
         keywords=keywords,
     )
-    
+
     total_stored = 0
     total_duplicates = 0
-    
+
     async with RedditClient() as client:
         async for post in client.search_multiple_subreddits(
             subreddits=subreddits,
@@ -69,7 +67,7 @@ async def ingest_reddit(
                 total_stored += 1
             else:
                 total_duplicates += 1
-    
+
     # Final stats
     final_stats = store.get_stats()
     logger.info(
@@ -78,7 +76,7 @@ async def ingest_reddit(
         stored_this_run=total_stored,
         duplicates_this_run=total_duplicates,
     )
-    
+
     print(f"\nReddit ingestion complete!")
     print(f"Posts stored this run: {total_stored}")
     print(f"Duplicates skipped: {total_duplicates}")
@@ -89,9 +87,7 @@ async def ingest_reddit(
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Ingest Reddit posts for narrative analysis"
-    )
+    parser = argparse.ArgumentParser(description="Ingest Reddit posts for narrative analysis")
     parser.add_argument(
         "--subreddits",
         nargs="+",
@@ -134,19 +130,21 @@ def main():
         default="hot",
         help="Sort method for posts (default: hot)",
     )
-    
+
     args = parser.parse_args()
-    
+
     try:
-        asyncio.run(ingest_reddit(
-            subreddits=args.subreddits,
-            keywords=args.keywords,
-            max_results=args.max_results,
-            min_upvotes=args.min_upvotes,
-            min_comments=args.min_comments,
-            hours_back=args.hours_back,
-            sort=args.sort,
-        ))
+        asyncio.run(
+            ingest_reddit(
+                subreddits=args.subreddits,
+                keywords=args.keywords,
+                max_results=args.max_results,
+                min_upvotes=args.min_upvotes,
+                min_comments=args.min_comments,
+                hours_back=args.hours_back,
+                sort=args.sort,
+            )
+        )
     except KeyboardInterrupt:
         logger.info("reddit_ingestion.interrupted")
         sys.exit(1)
