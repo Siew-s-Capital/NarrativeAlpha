@@ -11,8 +11,9 @@ from narrativealpha.config.settings import settings
 from narrativealpha.ingestion.twitter import TwitterClient
 from narrativealpha.ingestion.reddit import RedditClient
 from narrativealpha.ingestion.news import NewsClient
+from narrativealpha.ingestion.podcast import PodcastClient
 from narrativealpha.ingestion.storage import SocialPostStore
-from narrativealpha.models import SocialPost, Tweet, RedditPost, NewsArticle
+from narrativealpha.models import SocialPost, Tweet, RedditPost, NewsArticle, PodcastTranscript
 
 logger = structlog.get_logger()
 
@@ -41,6 +42,12 @@ class IngestionConfig:
     news_max_results: int = 50
     news_language: str = "en"
     news_domains: list[str] = field(default_factory=list)
+
+    # Podcast settings
+    podcast_enabled: bool = True
+    podcast_feeds: list[str] = field(default_factory=list)
+    podcast_max_episodes: int = 20
+    podcast_keywords: list[str] = field(default_factory=list)
 
     # General settings
     hours_back: int = 24
@@ -284,6 +291,52 @@ class PipelineOrchestrator:
         self._results.append(result)
         return result
 
+
+
+    async def ingest_podcasts(
+        self,
+        feeds: Optional[list[str]] = None,
+        max_episodes: Optional[int] = None,
+        keywords: Optional[list[str]] = None,
+    ) -> IngestionResult:
+        """Run podcast RSS transcript ingestion."""
+        feeds = feeds or self.config.podcast_feeds
+        max_episodes = max_episodes or self.config.podcast_max_episodes
+        keywords = keywords or self.config.podcast_keywords
+
+        started_at = datetime.utcnow()
+        result = IngestionResult(source="podcast", started_at=started_at, completed_at=started_at)
+
+        if not feeds:
+            result.errors.append("No podcast feeds configured")
+            result.success = False
+            return result
+
+        try:
+            client = PodcastClient()
+            for feed_url in feeds:
+                try:
+                    async for episode in client.ingest_feed(
+                        feed_url=feed_url,
+                        max_episodes=max_episodes,
+                        keywords=keywords,
+                    ):
+                        inserted = self.store.store_podcast_transcript(episode)
+                        if inserted:
+                            result.posts_stored += 1
+                        else:
+                            result.duplicates_skipped += 1
+                except Exception as e:
+                    result.errors.append(f"Feed '{feed_url}' failed: {str(e)}")
+
+            result.completed_at = datetime.utcnow()
+        except Exception as e:
+            result.success = False
+            result.errors.append(f"Podcast ingestion failed: {str(e)}")
+
+        self._results.append(result)
+        return result
+
     async def run_all(self) -> list[IngestionResult]:
         """
         Run all configured ingestion sources.
@@ -305,6 +358,9 @@ class PipelineOrchestrator:
 
         if self.config.news_enabled and self.config.news_queries:
             tasks.append(self.ingest_news())
+
+        if self.config.podcast_enabled and self.config.podcast_feeds:
+            tasks.append(self.ingest_podcasts())
 
         if not tasks:
             logger.warning("orchestrator.no_sources_configured")
@@ -354,5 +410,6 @@ class PipelineOrchestrator:
         print(f"   Twitter: {stats.get('twitter', 0)}")
         print(f"   Reddit: {stats.get('reddit', 0)}")
         print(f"   News: {stats.get('news', 0)}")
+        print(f"   Podcast: {stats.get('podcast', 0)}")
         print(f"   Unprocessed: {stats['unprocessed']}")
         print("=" * 50)

@@ -78,6 +78,18 @@ class NewsArticle(SocialPost):
     image_url: Optional[str] = Field(default=None)
 
 
+class PodcastTranscript(SocialPost):
+    """Podcast transcript episode normalized to social post schema."""
+
+    platform: str = "podcast"
+
+    show_name: str = Field(...)
+    episode_title: str = Field(...)
+    episode_url: Optional[str] = Field(default=None)
+    audio_url: Optional[str] = Field(default=None)
+    transcript_source: Optional[str] = Field(default=None)
+
+
 class Narrative(BaseModel):
     """Detected narrative/cluster model."""
 

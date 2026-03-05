@@ -27,7 +27,8 @@ Current tools track price/volume. Nobody tracks narrative formation in real-time
 | 2026-03-02 | Project structure, config system, Twitter ingestion | ✅ Complete |
 | 2026-03-03 | Reddit ingestion, unified data pipeline | ✅ Complete |
 | 2026-03-04 | News API ingestion, unified data models | ✅ Complete |
-| 2026-03-05 | Podcast transcription ingestion | 🔄 Next |
+| 2026-03-05 | Podcast transcription ingestion | ✅ Complete |
+| 2026-03-06 | LLM narrative clustering engine | 🔄 Next |
 
 ## Quick Start
 
@@ -49,6 +50,9 @@ python scripts/ingest_reddit.py --subreddits Cryptocurrency Bitcoin --keywords $
 
 # Run News ingestion
 python scripts/ingest_news.py "$BTC" "crypto ETF" --max-results 50 --hours-back 24
+
+# Run Podcast ingestion
+python scripts/ingest_podcasts.py https://feeds.megaphone.fm/thejournal https://feeds.soundcloud.com/users/soundcloud:users:322164009/sounds.rss --max-episodes 20 --keywords bitcoin ethereum
 ```
 
 ## Architecture
@@ -76,10 +80,11 @@ NarrativeAlpha/
 - [x] **Twitter Ingestion** — Async API client with rate limiting
 - [x] **Reddit Ingestion** — Async PRAW client with parallel searching
 - [x] **News API Ingestion** — Async News API client with query/domain filtering
-- [x] **Unified Data Models** — Twitter, Reddit, and News all normalized to SocialPost
+- [x] **Podcast Transcript Ingestion** — RSS feed ingestion with transcript extraction + keyword filtering
+- [x] **Unified Data Models** — Twitter, Reddit, News, and Podcast data normalized to SocialPost
 - [x] **Unified Storage** — SQLite storage with deduplication across platforms
 - [x] **Ingestion Pipeline** — Orchestrator for multi-platform data collection
-- [x] **CLI Tools** — Scripts for Twitter and Reddit ingestion
+- [x] **CLI Tools** — Scripts for Twitter, Reddit, News, and Podcast ingestion
 - [x] **Test Suite** — Unit tests for ingestion and models
 
 ### 🔄 Phase 1: Remaining

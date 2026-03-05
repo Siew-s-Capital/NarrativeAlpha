@@ -8,7 +8,7 @@ from typing import Optional, Union
 
 import structlog
 
-from narrativealpha.models import Tweet, RedditPost, NewsArticle, SocialPost
+from narrativealpha.models import Tweet, RedditPost, NewsArticle, PodcastTranscript, SocialPost
 
 logger = structlog.get_logger()
 
@@ -85,6 +85,17 @@ class SocialPostStore:
                 )
             """)
 
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS podcast_transcripts_extended (
+                    post_id TEXT PRIMARY KEY REFERENCES posts(id) ON DELETE CASCADE,
+                    show_name TEXT NOT NULL,
+                    episode_title TEXT NOT NULL,
+                    episode_url TEXT,
+                    audio_url TEXT,
+                    transcript_source TEXT
+                )
+            """)
+
             # Indexes for common queries
             conn.execute("CREATE INDEX IF NOT EXISTS idx_posts_platform ON posts(platform)")
             conn.execute("CREATE INDEX IF NOT EXISTS idx_posts_created ON posts(created_at)")
@@ -96,6 +107,9 @@ class SocialPostStore:
             )
             conn.execute(
                 "CREATE INDEX IF NOT EXISTS idx_news_source ON news_articles_extended(source_name)"
+            )
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_podcast_show ON podcast_transcripts_extended(show_name)"
             )
 
             conn.commit()
@@ -285,7 +299,68 @@ class SocialPostStore:
             logger.error("news_article.store_failed", post_id=article.id, error=str(e))
             raise
 
-    def get_post(self, post_id: str) -> Optional[Union[Tweet, RedditPost, NewsArticle]]:
+
+
+    def store_podcast_transcript(self, transcript: PodcastTranscript) -> bool:
+        """Store a PodcastTranscript. Returns True if inserted, False if duplicate."""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                conn.execute(
+                    """
+                    INSERT INTO posts (
+                        id, platform, author_id, author_username, text, created_at,
+                        likes, replies, reposts, language, cashtags, hashtags, urls,
+                        collected_at, processed
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        transcript.id,
+                        transcript.platform,
+                        transcript.author_id,
+                        transcript.author_username,
+                        transcript.text,
+                        transcript.created_at.isoformat(),
+                        transcript.likes,
+                        transcript.replies,
+                        transcript.reposts,
+                        transcript.language,
+                        json.dumps(transcript.cashtags),
+                        json.dumps(transcript.hashtags),
+                        json.dumps(transcript.urls),
+                        transcript.collected_at.isoformat(),
+                        transcript.processed,
+                    ),
+                )
+
+                conn.execute(
+                    """
+                    INSERT INTO podcast_transcripts_extended (
+                        post_id, show_name, episode_title, episode_url,
+                        audio_url, transcript_source
+                    ) VALUES (?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        transcript.id,
+                        transcript.show_name,
+                        transcript.episode_title,
+                        transcript.episode_url,
+                        transcript.audio_url,
+                        transcript.transcript_source,
+                    ),
+                )
+
+                conn.commit()
+                logger.debug("podcast_transcript.stored", post_id=transcript.id)
+                return True
+
+        except sqlite3.IntegrityError:
+            logger.debug("podcast_transcript.duplicate", post_id=transcript.id)
+            return False
+        except Exception as e:
+            logger.error("podcast_transcript.store_failed", post_id=transcript.id, error=str(e))
+            raise
+
+    def get_post(self, post_id: str) -> Optional[Union[Tweet, RedditPost, NewsArticle, PodcastTranscript]]:
         """Retrieve a post by ID."""
         with sqlite3.connect(self.db_path) as conn:
             conn.row_factory = sqlite3.Row
@@ -301,6 +376,8 @@ class SocialPostStore:
                 return self._row_to_reddit_post(conn, row)
             if platform == "news":
                 return self._row_to_news_article(conn, row)
+            if platform == "podcast":
+                return self._row_to_podcast_transcript(conn, row)
             return None
 
     def get_tweet(self, tweet_id: str) -> Optional[Tweet]:
@@ -337,6 +414,8 @@ class SocialPostStore:
                     posts.append(self._row_to_reddit_post(conn, row))
                 elif platform == "news":
                     posts.append(self._row_to_news_article(conn, row))
+                elif platform == "podcast":
+                    posts.append(self._row_to_podcast_transcript(conn, row))
 
             return posts
 
@@ -369,6 +448,9 @@ class SocialPostStore:
             news_count = conn.execute(
                 "SELECT COUNT(*) FROM posts WHERE platform = 'news'"
             ).fetchone()[0]
+            podcast_count = conn.execute(
+                "SELECT COUNT(*) FROM posts WHERE platform = 'podcast'"
+            ).fetchone()[0]
 
             return {
                 "total_posts": total,
@@ -378,6 +460,7 @@ class SocialPostStore:
                 "twitter": twitter_count,
                 "reddit": reddit_count,
                 "news": news_count,
+                "podcast": podcast_count,
             }
 
     def _row_to_tweet(self, conn: sqlite3.Connection, row: sqlite3.Row) -> Tweet:
@@ -473,6 +556,38 @@ class SocialPostStore:
                 else (json.loads(row["urls"] or "[]")[:1] or [""])[0]
             ),
             image_url=ext_row["image_url"] if ext_row else None,
+        )
+
+
+    def _row_to_podcast_transcript(
+        self, conn: sqlite3.Connection, row: sqlite3.Row
+    ) -> PodcastTranscript:
+        """Convert database row to PodcastTranscript model."""
+        ext_row = conn.execute(
+            "SELECT * FROM podcast_transcripts_extended WHERE post_id = ?", (row["id"],)
+        ).fetchone()
+
+        return PodcastTranscript(
+            id=row["id"],
+            platform=row["platform"],
+            author_id=row["author_id"],
+            author_username=row["author_username"],
+            text=row["text"],
+            created_at=datetime.fromisoformat(row["created_at"]),
+            likes=row["likes"],
+            replies=row["replies"],
+            reposts=row["reposts"],
+            language=row["language"],
+            cashtags=json.loads(row["cashtags"] or "[]"),
+            hashtags=json.loads(row["hashtags"] or "[]"),
+            urls=json.loads(row["urls"] or "[]"),
+            collected_at=datetime.fromisoformat(row["collected_at"]),
+            processed=bool(row["processed"]),
+            show_name=ext_row["show_name"] if ext_row else "unknown",
+            episode_title=ext_row["episode_title"] if ext_row else row["text"][:120],
+            episode_url=ext_row["episode_url"] if ext_row else None,
+            audio_url=ext_row["audio_url"] if ext_row else None,
+            transcript_source=ext_row["transcript_source"] if ext_row else None,
         )
 
 
