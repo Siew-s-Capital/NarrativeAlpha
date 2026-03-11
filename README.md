@@ -31,7 +31,8 @@ Current tools track price/volume. Nobody tracks narrative formation in real-time
 | 2026-03-06 | LLM-ready narrative clustering engine | ✅ Complete |
 | 2026-03-07 | Sentiment analysis module | ✅ Complete |
 | 2026-03-08 | Velocity/saturation scoring | ✅ Complete |
-| 2026-03-09 | Narrative persistence and tracking | 🔄 Next |
+| 2026-03-09 | Narrative persistence and tracking | ✅ Complete |
+| 2026-03-10 | Trend prediction algorithms | 🔄 Next |
 
 ## Quick Start
 
@@ -62,6 +63,9 @@ python scripts/cluster_narratives.py --limit 200 --min-cluster-size 2
 
 # Run narrative sentiment scoring
 python scripts/analyze_sentiment.py --limit 200 --min-cluster-size 2
+
+# Track narrative persistence and lifecycle
+python scripts/track_narratives.py --limit 200 --min-cluster-size 2 --stale-after-hours 48
 ```
 
 ## Architecture
@@ -93,6 +97,7 @@ NarrativeAlpha/
 - [x] **Narrative Clustering Engine** — Rule-based clustering with optional LLM labeling interface
 - [x] **Sentiment Analysis Module** — Finance-aware sentiment scoring for posts and narratives
 - [x] **Scoring Engine** — Engagement velocity and market saturation (mindshare) metrics
+- [x] **Narrative Tracking** — Persistence layer with lifecycle events (created/updated/reactivated/deactivated)
 - [x] **Unified Data Models** — Twitter, Reddit, News, and Podcast data normalized to SocialPost
 - [x] **Unified Storage** — SQLite storage with deduplication across platforms
 - [x] **Ingestion Pipeline** — Orchestrator for multi-platform data collection
@@ -101,12 +106,10 @@ NarrativeAlpha/
 
 ### 🔄 Phase 1: Remaining
 
-- [ ] Velocity/saturation scoring
+- [ ] Trend prediction algorithms
 
 ### 📋 Phase 2: Intelligence
 
-- [ ] Narrative persistence and tracking
-- [ ] Trend prediction algorithms
 - [ ] Report generation system
 - [ ] API server
 - [ ] Frontend dashboard
